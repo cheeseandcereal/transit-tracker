@@ -1,3 +1,4 @@
+import swc from 'unplugin-swc';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
@@ -6,4 +7,6 @@ export default defineConfig({
       reporter: ['text'],
     },
   },
+  // swc plugin used for emitDecoratorMetadata ts support for typeORM: https://github.com/vitest-dev/vitest/discussions/3320
+  plugins: [swc.vite()],
 });
