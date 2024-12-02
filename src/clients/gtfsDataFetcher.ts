@@ -41,7 +41,7 @@ export class FeedFetcher {
       const stream = await openReadStream(entry);
       if (entry.fileName.endsWith('.txt')) {
         // Parse contents of txt file as a CSV and save to object we are returning later
-        gtfsDataByFile[entry.fileName] = parseCsv(await consumeStreamToBuffer(stream), { columns: true, skipEmptyLines: true });
+        gtfsDataByFile[entry.fileName] = parseCsv(await consumeStreamToBuffer(stream), { columns: true, skipEmptyLines: true, cast: false });
       } else {
         // Consume stream to continue reading zip, even though contents are unneeded
         await consumeStreamToBuffer(stream);

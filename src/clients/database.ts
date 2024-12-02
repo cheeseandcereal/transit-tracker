@@ -1,7 +1,7 @@
 import { DataSource } from 'typeorm';
 import { Config } from './configuration.js';
 
-const DatabaseDataSource = new DataSource({
+export const DatabaseDataSource = new DataSource({
   type: 'better-sqlite3',
   database: Config.getConfig().database || 'runtime/transittracker.db',
   synchronize: false,
@@ -10,7 +10,7 @@ const DatabaseDataSource = new DataSource({
   // logging: 'all',
 });
 
-class Database {
+export class Database {
   public static datasource: DataSource;
 
   // Must be called before other methods (on startup)
@@ -23,5 +23,3 @@ class Database {
     await Database.datasource.destroy();
   }
 }
-
-export { Database, DatabaseDataSource };

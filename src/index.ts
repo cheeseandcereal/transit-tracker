@@ -1,6 +1,6 @@
 import 'source-map-support/register.js';
 import 'reflect-metadata'; // for TypeORM
-import { scheduleFeedProcessor, unscheduleFeedProcessor, fetchAndProcessFeed } from './listeners/feedWatcher.js';
+import { scheduleFeedProcessor, unscheduleFeedProcessor, scheduleScheduleProcessor, unscheduleScheduleProcessor, fetchAndProcessSchedules } from './listeners/gtfsWatcher.js';
 import { Database } from './clients/database.js';
 import { getLogger } from './logger.js';
 const logger = getLogger('main');
@@ -8,9 +8,9 @@ const logger = getLogger('main');
 async function main() {
   logger.info('Starting Transit Tracker');
   await Database.initialize();
-  await fetchAndProcessFeed();
-  if (!process.env.alwaystrue) process.exit(0);
+  await fetchAndProcessSchedules();
   scheduleFeedProcessor();
+  scheduleScheduleProcessor();
 }
 
 let stopSignalReceived = false;
@@ -23,6 +23,7 @@ export async function shutdown() {
   logger.info('Shutting down - stop signal received');
   // Clean up and shutdown stuff here
   unscheduleFeedProcessor();
+  unscheduleScheduleProcessor();
   await Database.shutdown();
   process.exit(0);
 }

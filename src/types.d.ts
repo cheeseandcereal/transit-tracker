@@ -7,6 +7,7 @@ export interface DataSource {
   source_id: string;
   gtfs_schedule: string;
   gtfs_rt_feed: string;
+  routes: string[];
 }
 
 export interface ParsedGtfsData {
@@ -22,5 +23,5 @@ export interface ParsedGtfsData {
 }
 
 export interface CSVRow {
-  [columnName: string]: any;
+  [columnName: string]: string | undefined;
 }

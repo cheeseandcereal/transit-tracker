@@ -15,11 +15,13 @@ The schema of this configuration file is as follows:
     // Can have multiple data sources
     {
       // a simple string to uniquely identify this source
-      "source_id": "community_transit",
+      "source_id": "ct",
       // a URL to a gtfs spec zip for this provider
       "gtfs_schedule": "https://www.communitytransit.org/docs/default-source/open-data/gtfs/current.zip",
       // a URL to a gtfs-rt feed with trip update entities
-      "gtfs_rt_feed": "https://s3.dualstack.us-east-1.amazonaws.com/commtrans-realtime-prod/tripupdates.pb"
+      "gtfs_rt_feed": "https://s3.dualstack.us-east-1.amazonaws.com/commtrans-realtime-prod/tripupdates.pb",
+      // an array of gtfs route IDs to process. Can include "all" to process all routes from this provider
+      "routes": ["201"]
     }
   ]
 }
