@@ -194,7 +194,7 @@ export class GtfsScheduleParser {
       const date = parseGtfsDate(dateStr);
       if (exType === '1') {
         // Service added
-        let serviceDates = serviceWithDates[id] || [];
+        const serviceDates = serviceWithDates[id] || [];
         serviceDates.push(date);
         serviceDates.sort((a, b) => a.getTime() - b.getTime());
         serviceWithDates[id] = serviceDates;
@@ -278,7 +278,7 @@ export class GtfsScheduleParser {
     const stopTimeSequence: { stop: Stop; time: string; stopSequence: number }[] = [];
     for (const row of tripStopTimes) {
       // HH:MM:SS format (H:MM:SS is also accepted) - dayjs can parse both of these correctly
-      let time = row.arrival_time || row.departure_time || '';
+      const time = row.arrival_time || row.departure_time || '';
       if (!time) {
         logger.warn(
           `Error when processing stop_times.txt from ${sourceId}: Could not find arrival_time or departure_time.`,

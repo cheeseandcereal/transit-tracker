@@ -5,6 +5,7 @@ export const DatabaseDataSource = new DataSource({
   type: 'better-sqlite3',
   database: Config.getConfig().database || 'runtime/transittracker.db',
   synchronize: false,
+  migrationsRun: true,
   entities: ['dist/models/**/*.js'],
   migrations: ['dist/migrations/**/*.js'],
   // logging: 'all',

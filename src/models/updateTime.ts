@@ -22,7 +22,7 @@ export class UpdateTime extends BaseEntity {
   lastProcessedRoutes: Set<string>;
 
   public static async needsScheduleProcess(sourceId: string, routes: string[]) {
-    let updateTime = await UpdateTime.findOne({ where: { sourceId } });
+    const updateTime = await UpdateTime.findOne({ where: { sourceId } });
     if (!updateTime) return true; // If this source hasn't been processed before
     for (const route of routes) {
       // If this source was last processed without a route we have now

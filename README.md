@@ -26,3 +26,14 @@ The schema of this configuration file is as follows:
   ]
 }
 ```
+
+## Running/Development
+
+This project uses nodejs 22+ with typescript and the [yarn](https://classic.yarnpkg.com/) package manager.
+
+After cloning, run `yarn` to install the dependencies.
+
+You can build the project by running `yarn build` and then run the built project by running `node dist/index.js`
+
+Docker can also be used for running. First build the project with the dockerfile, i.e. `docker build . -t ttracker`,
+and then you can run it, ensuring to mount the runtime directory (for config/db) with `docker run -v $(pwd)/runtime:/app/runtime ttracker`
