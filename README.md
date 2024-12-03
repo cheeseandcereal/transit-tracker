@@ -15,13 +15,20 @@ The schema of this configuration file is as follows:
     // Can have multiple data sources
     {
       // a simple string to uniquely identify this source
-      "source_id": "ct",
-      // a URL to a gtfs spec zip for this provider
-      "gtfs_schedule": "https://www.communitytransit.org/docs/default-source/open-data/gtfs/current.zip",
-      // a URL to a gtfs-rt feed with trip update entities
-      "gtfs_rt_feed": "https://s3.dualstack.us-east-1.amazonaws.com/commtrans-realtime-prod/tripupdates.pb",
+      "source_id": "ba",
+      // a URL to a gtfs spec schedule zip for this provider
+      "gtfs_schedule": "https://www.bart.gov/dev/schedules/google_transit.zip",
+      // a URL to a gtfs-rt protobuf feed with trip update entities
+      "gtfs_rt_feed": "http://api.bart.gov/gtfsrt/tripupdate.aspx",
       // an array of gtfs route IDs to process. Can include "all" to process all routes from this provider
-      "routes": ["201"]
+      "routes": ["all"]
+    },
+    // Another example
+    {
+      "source_id": "kc",
+      "gtfs_schedule": "https://metro.kingcounty.gov/GTFS/google_transit.zip",
+      "gtfs_rt_feed": "https://s3.dualstack.us-east-1.amazonaws.com/kcm-alerts-realtime-prod/tripupdates.pb",
+      "routes": ["100340", "100512", "102548", "102576", "102581", "102615", "102619", "102736", "102745"]
     }
   ]
 }
