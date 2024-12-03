@@ -1,8 +1,9 @@
 import { Config } from '../clients/configuration.js';
 import { FeedFetcher } from '../clients/gtfsDataFetcher.js';
 import { UpdateTime } from '../models/updateTime.js';
-import { GtfsScheduleParser } from '../utils/gtfsScheduleImporter.js';
-import { getRoundedUTCDateFromNow, timeoutPromise, utcDateToYMDFormat } from '../utils.js';
+import { GtfsScheduleImporter } from '../utils/gtfsScheduleImporter.js';
+import { GtfsRealtimeImporter } from '../utils/gtfsTripUpdateImporter.js';
+import { getRoundedUTCDateFromOffset, timeoutPromise, utcDateToYMDFormat } from '../utils.js';
 import { getLogger } from '../logger.js';
 const logger = getLogger('GtfsWatcher');
 
@@ -26,17 +27,14 @@ export async function fetchAndProcessFeeds() {
         for (const datasource of Config.getConfig().datasources) {
           logger.debug(`Fetching gtfs-rt feed for ${datasource.source_id}`);
           const msg = await FeedFetcher.fetchGtfsrtFeedData(datasource.source_id);
-          const ts = Number(msg.header.timestamp);
+          const ts = msg.header.timestamp;
           if (!ts) {
             logger.warn(`Did not find required timestamp for trip updates message from gtfs-rt feed from ${datasource.source_id} - Will not process feed`);
             continue;
           }
           if ((await UpdateTime.lastProcessedFeedTime(datasource.source_id)) !== ts) {
-            logger.debug(`Processing gtfs-rt trip updates feed for ${datasource.source_id} - ts: ${ts}`);
-            // TODO START
-            logger.debug(`Parsed gtfs-rt feed version: ${msg.header.gtfs_realtime_version}`);
-            logger.info(`Found ${msg.entity.length} messages from gtfs-rt feed ${datasource.source_id}`);
-            // TODO END
+            logger.debug(`Processing gtfs-rt trip updates feed for ${datasource.source_id} with ${msg.entity?.length} messages - ts: ${ts}`);
+            await GtfsRealtimeImporter.importGtfsScheduleData(datasource.source_id, msg.entity || [], ts, datasource.routes);
             await UpdateTime.updateLastProcessedFeedTime(datasource.source_id, ts);
             logger.debug(`Finished processing gtfs-rt feed for ${datasource.source_id}`);
           } else {
@@ -58,15 +56,15 @@ export async function fetchAndProcessSchedules() {
   try {
     // Only process the schedule for dates on/between 2 days old up to 2 days in the future (all UTC time)
     // This helps us avoid processing/writing schedule data that isn't necessary yet at this point in time
-    const onOrAfter = getRoundedUTCDateFromNow(-2);
-    const onOrBefore = getRoundedUTCDateFromNow(2);
+    const onOrAfter = getRoundedUTCDateFromOffset(-2);
+    const onOrBefore = getRoundedUTCDateFromOffset(2);
     logger.info(`Starting schedule fetching/processing for dates between ${utcDateToYMDFormat(onOrAfter)} and ${utcDateToYMDFormat(onOrBefore)}`);
     for (const datasource of Config.getConfig().datasources) {
       if (await UpdateTime.needsScheduleProcess(datasource.source_id, datasource.routes)) {
         logger.debug(`Fetching gtfs schedule data for ${datasource.source_id}`);
         const scheduleData = await FeedFetcher.fetchGtfsScheduleData(datasource.source_id);
         logger.debug(`Processing schedule data for ${datasource.source_id} - routes: ${datasource.routes}`);
-        await GtfsScheduleParser.importGtfsScheduleData(datasource.source_id, scheduleData, datasource.routes, onOrAfter, onOrBefore);
+        await GtfsScheduleImporter.importGtfsScheduleData(datasource.source_id, scheduleData, datasource.routes, onOrAfter, onOrBefore);
         await UpdateTime.updateLastProcessedScheduleTime(datasource.source_id, datasource.routes);
         logger.debug(`Finished importing/updating schedule data for ${datasource.source_id}`);
       } else {

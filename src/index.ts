@@ -5,6 +5,12 @@ import { Database } from './clients/database.js';
 import { getLogger } from './logger.js';
 const logger = getLogger('main');
 
+// Configure protobufjs to not use long.js
+// all 64 bit defined integers in protobuf protocol fit into js numbers for this application
+import protobuf from 'protobufjs';
+protobuf.util.Long = null as any;
+protobuf.configure();
+
 async function main() {
   logger.info('Starting Transit Tracker');
   await Database.initialize();

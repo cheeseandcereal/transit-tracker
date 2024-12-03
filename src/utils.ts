@@ -25,11 +25,19 @@ export function utcDateToYMDFormat(date: Date) {
 
 // Creates a Date object, which is rounded to exactly midnight (of today in UTC)
 // Then applies an offset to move it forward or backwards x days
-export function getRoundedUTCDateFromNow(dayOffset: number) {
+export function getRoundedUTCDateFromOffset(dayOffset: number, from?: Date) {
   // Translate current UTC date to string YYYY-MM-DD format which is parsed again by a new date to round to midnight
-  const date = new Date(utcDateToYMDFormat(new Date()));
+  const date = getRoundedUTCDateFromTime(from ? from : new Date());
   date.setUTCDate(date.getUTCDate() + dayOffset);
   return date;
+}
+
+export function getRoundedUTCDateFromTime(date: Date) {
+  return new Date(utcDateToYMDFormat(date));
+}
+
+export function shouldProcessRoute(routes: Set<string>, route: string) {
+  return routes.has(route) || routes.has('all');
 }
 
 export async function bulkInsertOrRemoveItems<T extends ObjectLiteral>(items: T[], repo: Repository<T>, remove?: boolean) {

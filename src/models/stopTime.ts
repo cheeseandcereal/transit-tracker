@@ -7,8 +7,8 @@ const logger = getLogger('stopTime');
 
 @Entity()
 export class StopTime extends BaseEntity {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @PrimaryGeneratedColumn()
+  id: number;
 
   @Column()
   sourceId: string;
@@ -61,6 +61,18 @@ export class StopTime extends BaseEntity {
     if (stopTimes.length) {
       logger.debug(`Bulk removing ${stopTimes.length} stop times`);
       await bulkInsertOrRemoveItems(stopTimes, StopTime.getRepository(), true);
+    }
+  }
+
+  public static async bulkUpdateTimes(updateMap: { [id: string]: number }, column: 'actualTime' | 'lastUpdatedDataTime') {
+    const ids: string[] = [];
+    const whenStatements: string[] = [];
+    Object.entries(updateMap).forEach(([id, val]) => {
+      ids.push(id);
+      whenStatements.push(`WHEN ${id} THEN ${val}`);
+    });
+    if (ids.length && whenStatements.length) {
+      await StopTime.getRepository().query(`UPDATE stop_time SET ${column} = CASE id ${whenStatements.join(' ')} END WHERE id in (${ids.join(',')});`);
     }
   }
 }

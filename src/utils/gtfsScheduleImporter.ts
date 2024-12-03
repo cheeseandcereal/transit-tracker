@@ -5,7 +5,7 @@ import { Route } from '../models/route.js';
 import { Stop } from '../models/stop.js';
 import { Trip } from '../models/trip.js';
 import { StopTime } from '../models/stopTime.js';
-import { utcDateToYMDFormat } from '../utils.js';
+import { shouldProcessRoute, utcDateToYMDFormat } from '../utils.js';
 import { getLogger } from '../logger.js';
 import type { CSVRow, ParsedGtfsData } from '../types.js';
 
@@ -26,14 +26,14 @@ interface tripsById {
   [tripId: string]: Trip[] | undefined;
 }
 
-export class GtfsScheduleParser {
+export class GtfsScheduleImporter {
   public static async importGtfsScheduleData(sourceId: string, data: ParsedGtfsData, routeIds: string[], onOrAfter: Date, onOrBefore: Date) {
     const routesToProcess = new Set(routeIds);
-    const routes = await GtfsScheduleParser.getOrGenerateRoutes(sourceId, data, routesToProcess);
+    const routes = await GtfsScheduleImporter.getOrGenerateRoutes(sourceId, data, routesToProcess);
     logger.debug(`Loaded ${Object.keys(routes).length} routes for ${sourceId}`);
-    const stops = await GtfsScheduleParser.getOrGenerateStops(sourceId, data);
+    const stops = await GtfsScheduleImporter.getOrGenerateStops(sourceId, data);
     logger.debug(`Loaded ${Object.keys(stops).length} stops for ${sourceId}`);
-    const trips = await GtfsScheduleParser.getOrGenerateTrips(sourceId, data, routes, onOrAfter, onOrBefore);
+    const trips = await GtfsScheduleImporter.getOrGenerateTrips(sourceId, data, routes, onOrAfter, onOrBefore);
     let tripInstances = 0;
     let tripStopTimes = 0;
     Object.values(trips).forEach((trips) => {
@@ -41,7 +41,7 @@ export class GtfsScheduleParser {
       trips?.forEach((trip) => (tripStopTimes += trip.stopTimes?.length || 0));
     });
     logger.debug(`Loaded ${Object.keys(trips).length} trips (${tripInstances} instances and ${tripStopTimes} existing stop times) for ${sourceId}`);
-    await GtfsScheduleParser.getOrGenerateStopTimes(sourceId, data, trips, stops);
+    await GtfsScheduleImporter.getOrGenerateStopTimes(sourceId, data, trips, stops);
     let stopTimes = 0;
     Object.values(trips).forEach((trips) => trips?.forEach((trip) => (stopTimes += trip.stopTimes?.length || 0)));
     logger.debug(`Loaded all ${stopTimes} stop times for ${sourceId}`);
@@ -52,7 +52,7 @@ export class GtfsScheduleParser {
     const newRoutes: Route[] = [];
     // Load current routes
     (await Route.getRoutesFromSourceWithoutTrips(sourceId)).forEach((route) => {
-      if (shouldProcess(routes, route.gtfsRouteId)) {
+      if (shouldProcessRoute(routes, route.gtfsRouteId)) {
         routeMap[route.gtfsRouteId] = route;
       }
     });
@@ -69,7 +69,7 @@ export class GtfsScheduleParser {
         );
         continue;
       }
-      if (!shouldProcess(routes, id)) continue;
+      if (!shouldProcessRoute(routes, id)) continue;
       // Get (and conditionally update) or create route
       let route = routeMap[id];
       if (!route) {
@@ -132,6 +132,7 @@ export class GtfsScheduleParser {
 
   private static getTimezoneByAgency(sourceId: string, data: ParsedGtfsData) {
     const timezoneByAgency: { [agencyId: string]: string | undefined } = {};
+    const agencyLength = data['agency.txt']?.length || 0;
     data['agency.txt'].forEach((row) => {
       const id = row.agency_id || '';
       const tz = row.agency_timezone;
@@ -140,6 +141,7 @@ export class GtfsScheduleParser {
         return;
       }
       timezoneByAgency[id] = tz;
+      if (agencyLength <= 1) timezoneByAgency[''] = tz;
     });
     return timezoneByAgency;
   }
@@ -212,7 +214,7 @@ export class GtfsScheduleParser {
   private static async getOrGenerateTrips(sourceId: string, data: ParsedGtfsData, routes: routesById, onOrAfter: Date, onOrBefore: Date) {
     const tripMap: tripsById = {};
     const newTrips: Trip[] = [];
-    const services = GtfsScheduleParser.getServiceIdsPerDay(sourceId, data);
+    const services = GtfsScheduleImporter.getServiceIdsPerDay(sourceId, data);
     (await Trip.getTripsFromSourceWitStopTimesBetweenDates(sourceId, utcDateToYMDFormat(onOrAfter), utcDateToYMDFormat(onOrBefore))).forEach((trip) => {
       const existing = tripMap[trip.gtfsTripId] || [];
       existing.push(trip);
@@ -311,8 +313,8 @@ export class GtfsScheduleParser {
   private static async getOrGenerateStopTimes(sourceId: string, data: ParsedGtfsData, tripsById: tripsById, stopsById: stopsById) {
     const newStopTimes: StopTime[] = [];
     const removeStopTimes: StopTime[] = [];
-    const tzs = GtfsScheduleParser.getTimezoneByAgency(sourceId, data);
-    const stopTimesByTripId = GtfsScheduleParser.getStopTimesByTripId(sourceId, data);
+    const tzs = GtfsScheduleImporter.getTimezoneByAgency(sourceId, data);
+    const stopTimesByTripId = GtfsScheduleImporter.getStopTimesByTripId(sourceId, data);
     for (const tripId of Object.keys(stopTimesByTripId)) {
       // Find corresponding loaded trips array previously loaded from DB corresponding with the gtfs stop times for this trip
       const trips = tripsById[tripId] || [];
@@ -325,7 +327,7 @@ export class GtfsScheduleParser {
         );
         continue;
       }
-      const stopTimeSequence = GtfsScheduleParser.generateStopTimeSequenceData(sourceId, stopTimesByTripId[tripId] || [], stopsById);
+      const stopTimeSequence = GtfsScheduleImporter.generateStopTimeSequenceData(sourceId, stopTimesByTripId[tripId] || [], stopsById);
       // Compare stopTimeSequence (from gtfs schedule data) to existing trip stop times (from db), updating any differences as needed
       for (const trip of trips) {
         if (!trip.stopTimes) {
@@ -375,8 +377,4 @@ function parseGtfsDate(date: string): Date {
   const month = date.substring(4, 6);
   const day = date.substring(6, 8);
   return new Date(`${year}-${month}-${day}`);
-}
-
-function shouldProcess(routes: Set<string>, route: string) {
-  return routes.has(route) || routes.has('all');
 }

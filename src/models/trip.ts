@@ -1,7 +1,7 @@
 import { Entity, PrimaryColumn, Column, BaseEntity, ManyToOne, OneToMany, Relation, Between, Index } from 'typeorm';
 import { Route } from './route.js';
 import { StopTime } from './stopTime.js';
-import { bulkInsertOrRemoveItems } from '../utils.js';
+import { bulkInsertOrRemoveItems, getRoundedUTCDateFromOffset, utcDateToYMDFormat } from '../utils.js';
 import { getLogger } from '../logger.js';
 const logger = getLogger('trip');
 
@@ -53,6 +53,27 @@ export class Trip extends BaseEntity {
 
   public static async getTripWithoutRelations(sourceId: string, tripId: string, ymdDate: string) {
     return Trip.findOne({ where: { sourceId: sourceId, gtfsTripId: tripId, tripDate: ymdDate }, relations: { route: false, stopTimes: false } });
+  }
+
+  // Takes a source and trip ID, and a time, and finds the corresponding trip entity closest to the time matching the IDs
+  public static async getClosestTripForSourceAndIdWithTime(sourceId: string, tripId: string, time: Date): Promise<Trip | undefined> {
+    // We search +/- a full day to account for UTC timezone differences. gtfs schedule works off of whole days, so we should never be more than a day off
+    const fromDate = utcDateToYMDFormat(getRoundedUTCDateFromOffset(-1, time));
+    const toDate = utcDateToYMDFormat(getRoundedUTCDateFromOffset(1, time));
+    const trips = await Trip.find({ where: { sourceId, gtfsTripId: tripId, tripDate: Between(fromDate, toDate) }, relations: { route: false, stopTimes: true } });
+    // Search through stops on trips and find the trip with the closest stop to the provided time
+    let current: Trip | undefined = undefined;
+    let closestOffset = Number.MAX_SAFE_INTEGER;
+    trips.forEach((trip) => {
+      trip.stopTimes?.forEach((stop) => {
+        const offset = Math.abs(stop.scheduledTime - (time.getTime() / 1000));
+        if (offset < closestOffset) {
+          current = trip;
+          closestOffset = offset;
+        }
+      });
+    });
+    return current;
   }
 
   public static async getTripsFromSourceWitStopTimesBetweenDates(sourceId: string, ymdStartDate: string, ymdEndDate: string) {
